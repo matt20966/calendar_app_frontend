@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Alert, Scr
 import { Calendar } from 'react-native-calendars';
 import axios from 'axios';
 import AddEventModal from './src/components/AddEventModal';
+import EditEventModal from './src/components/EditEventModal'; 
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android') {
@@ -20,6 +21,8 @@ export default function App() {
   const [calendarDates, setCalendarDates] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false); // State for edit modal
+  const [selectedEvent, setSelectedEvent] = useState(null); // State for event to be edited
   const [selectedDay, setSelectedDay] = useState(null); 
   const [selectedDayEvents, setSelectedDayEvents] = useState([]); 
 
@@ -68,9 +71,15 @@ export default function App() {
     setSelectedDayEvents(eventsForDay);
   };
 
-  // Callback to refresh events after a new event is successfully added
+  // Callback to refresh events after a new event is successfully added or updated
   const handleEventAddition = () => {
     getEvents();
+  };
+
+  // Function to open the edit modal
+  const handleEditEvent = (event) => {
+    setSelectedEvent(event);
+    setIsEditModalVisible(true);
   };
 
   // Handles the deletion of a specific event
@@ -145,6 +154,12 @@ export default function App() {
                 <Text style={styles.eventDescription}>{event.description}</Text>
               </View>
               <View style={styles.eventActions}>
+                <TouchableOpacity 
+                  style={styles.editButton} 
+                  onPress={() => handleEditEvent(event)}
+                >
+                  <Text style={styles.editButtonText}>Edit</Text>
+                </TouchableOpacity>
                 <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeleteEvent(event.id)}>
                   <Text style={styles.deleteButtonText}>Delete</Text>
                 </TouchableOpacity>
@@ -162,6 +177,13 @@ export default function App() {
         isVisible={isAddModalVisible}
         onClose={() => setIsAddModalVisible(false)}
         onEventAdded={handleEventAddition}
+      />
+
+      <EditEventModal
+        isVisible={isEditModalVisible}
+        onClose={() => setIsEditModalVisible(false)}
+        event={selectedEvent}
+        onEventUpdated={handleEventAddition}
       />
     </View>
   );
@@ -265,6 +287,18 @@ const styles = StyleSheet.create({
   eventActions: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  editButton: {
+    backgroundColor: '#007AFF', // A nice blue for edit
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  editButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
   deleteButton: {
     backgroundColor: '#ff4d4f',
