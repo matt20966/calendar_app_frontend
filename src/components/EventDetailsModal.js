@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, Text, Modal, TouchableOpacity, ScrollView, Linking } from 'react-native';
 
-const EventDetailsModal = ({ isVisible, onClose, events, selectedDate, onDeleteEvent }) => {
+const EventDetailsModal = ({ isVisible, onClose, events, selectedDate, onDeleteEvent, onEditEvent }) => {
   if (!events || events.length === 0) {
     return (
       <Modal visible={isVisible} animationType="slide" transparent={true}>
@@ -21,7 +21,7 @@ const EventDetailsModal = ({ isVisible, onClose, events, selectedDate, onDeleteE
   const handleShareEvent = (event) => {
     // Construct a clean, readable email body using template literals
     const subject = `Event Reminder: ${event.title}`;
-    const body = `Hi there, here's the details of my event ${event.title} Date: ${event.date} Time: ${event.time.substring(0, 5)} Description: ${event.description}`;
+    const body = `Hi there,%0A%0AHere are the details for an upcoming event:%0A%0AEvent: ${event.title}%0ADate: ${event.date}%0ATime: ${event.time.substring(0, 5)}%0ADescription: ${event.description}`;
     const url = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
     Linking.openURL(url).catch(err => console.error('Failed to open email client:', err));
@@ -41,6 +41,13 @@ const EventDetailsModal = ({ isVisible, onClose, events, selectedDate, onDeleteE
                   <Text style={styles.eventDescription}>{event.description}</Text>
                 </View>
                 <View style={styles.buttonRow}>
+                  {/* Edit Button */}
+                  <TouchableOpacity 
+                    style={styles.editButton} 
+                    onPress={() => onEditEvent(event)}
+                  >
+                    <Text style={styles.buttonText}>Edit</Text>
+                  </TouchableOpacity>
                   {/* Share Button */}
                   <TouchableOpacity 
                     style={styles.shareButton} 
@@ -82,7 +89,10 @@ const styles = StyleSheet.create({
     padding: 35,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {
+      width: 0,
+      height: 2
+    },
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
@@ -103,9 +113,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 15,
     marginBottom: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: 'column',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
   },
   eventTextContainer: {
     flex: 1,
@@ -143,11 +153,18 @@ const styles = StyleSheet.create({
   buttonRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-start',
+    marginTop: 15,
   },
   buttonText: {
     color: 'white',
     fontWeight: 'bold',
+  },
+  editButton: {
+    backgroundColor: '#FFA500',
+    padding: 10,
+    borderRadius: 8,
+    marginLeft: 10,
   },
   shareButton: {
     backgroundColor: '#4CAF50',
