@@ -4,6 +4,7 @@ import { Calendar } from 'react-native-calendars';
 import axios from 'axios';
 import AddEventModal from './src/components/AddEventModal';
 import EditEventModal from './src/components/EditEventModal'; 
+import * as Notifications from 'expo-notifications'; // Import the Expo Notifications library
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android') {
@@ -14,6 +15,50 @@ if (Platform.OS === 'android') {
 
 // The base URL for the Django backend API, configured for the local network
 const API_URL = 'http://192.168.1.99:8000/api/events/'; 
+
+// Set up the notification handler
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
+// Function to register for push notifications and get the token
+async function registerForPushNotificationsAsync() {
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
+
+  if (existingStatus !== 'granted') {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+  }
+
+  if (finalStatus !== 'granted') {
+    Alert.alert('Permission to receive notifications was denied!');
+    return;
+  }
+
+  const token = (await Notifications.getExpoPushTokenAsync()).data;
+  console.log("Expo Push Token:", token);
+  // In a real app, you would send this token to your backend
+}
+
+// A function to schedule a local notification
+async function scheduleEventNotification(event) {
+  const notificationDate = new Date(`${event.date}T${event.time}`);
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: "Event Reminder",
+      body: event.title,
+    },
+    trigger: { 
+      date: notificationDate 
+    },
+  });
+}
 
 export default function App() {
   // Application state variables
@@ -37,10 +82,8 @@ export default function App() {
       fetchedEvents.forEach(event => {
         const date = event.date;
         if (formattedDates[date]) {
-          // If a date already has events, add another dot
           formattedDates[date].dots.push({ key: event.id, color: 'white' });
         } else {
-          // Otherwise, create a new entry for the date
           formattedDates[date] = {
             dots: [{ key: event.id, color: 'white' }],
             selected: false,
@@ -56,24 +99,26 @@ export default function App() {
     }
   };
 
-  // Effect hook to run the initial data fetch on component mount
+  // Effect hook to run the initial data fetch and notification registration on component mount
   useEffect(() => {
     getEvents();
+    registerForPushNotificationsAsync(); // This is Step 2
   }, []);
 
   // Handles a day press on the calendar to show event details
   const handleDaySelection = (day) => {
-    // Animate the layout change smoothly
     LayoutAnimation.easeInEaseOut();
     setSelectedDay(day);
-    // Filter events for the selected day and update state
     const eventsForDay = events.filter(event => event.date === day.dateString);
     setSelectedDayEvents(eventsForDay);
   };
 
   // Callback to refresh events after a new event is successfully added or updated
-  const handleEventAddition = () => {
+  const handleEventAddition = (newEvent) => {
     getEvents();
+    if (newEvent) {
+      scheduleEventNotification(newEvent); // Schedule notification for the new event
+    }
   };
 
   // Function to open the edit modal
@@ -87,9 +132,7 @@ export default function App() {
     try {
       await axios.delete(`${API_URL}${eventId}/`);
       Alert.alert("Success", "Event deleted successfully!");
-      // Refresh the events to update the UI
       getEvents(); 
-      // Also update the list of selected day's events
       setSelectedDayEvents(prevEvents => prevEvents.filter(event => event.id !== eventId));
     } catch (error) {
       console.error("Deletion Error:", error);
@@ -106,7 +149,6 @@ export default function App() {
     );
   }
 
-  // Main component render function
   return (
     <View style={styles.container}>
       <Text style={styles.header}>My Events</Text>
@@ -119,7 +161,6 @@ export default function App() {
         markingType={'multi-dot'}
         onDayPress={handleDaySelection}
         theme={{
-          // Customizing the calendar's look and feel
           backgroundColor: '#ffffff',
           calendarBackground: '#ffffff',
           textSectionTitleColor: '#b6c1cd',
@@ -143,7 +184,6 @@ export default function App() {
         </TouchableOpacity>
       </View>
       
-      {/* Scrollable list to show events for the selected day */}
       <ScrollView style={styles.eventListContainer} contentContainerStyle={styles.eventListContent}>
         {selectedDayEvents.length > 0 ? (
           selectedDayEvents.map((event) => (
@@ -289,7 +329,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   editButton: {
-    backgroundColor: '#007AFF', // A nice blue for edit
+    backgroundColor: '#007AFF',
     padding: 10,
     borderRadius: 8,
     alignItems: 'center',
